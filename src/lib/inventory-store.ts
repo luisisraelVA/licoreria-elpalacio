@@ -6,44 +6,50 @@ import { toast } from "sonner";
 // Hook para obtener el inventario y movimientos en tiempo real
 export function useInventory() {
   const [productos, setProductos] = useState<Producto[]>([]);
-  const [movimientos, setMovimientos] = useState<Movimiento[]>([]);
+  const [movimientos, setMovimientos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      
-      // 1. Obtener productos
-      const { data: prodData, error: prodError } = await supabase
-        .from("productos")
-        .select("*")
-        .order("nombre", { ascending: true });
-
-      if (prodError) throw prodError;
-
-      // 2. Obtener los últimos 10 movimientos
-      const { data: movData, error: movError } = await supabase
-        .from("movimientos")
-        .select("*")
-        .order("fecha_hora", { ascending: false })
-        .limit(10);
-
-      if (movError) throw movError;
-
-      setProductos(prodData || []);
-      setMovimientos(movData || []);
-    } catch (error: any) {
-      toast.error("Error al cargar datos", { description: error.message });
-    } finally {
-      setLoading(false);
-    }
+  // Función para cargar datos (la que ya tenías)
+  const refresh = async () => {
+    setLoading(true);
+    const { data: p } = await supabase.from("productos").select("*").order("nombre");
+    const { data: m } = await supabase.from("movimientos").select("*").order("fecha_hora", { ascending: false });
+    if (p) setProductos(p);
+    if (m) setMovimientos(m);
+    setLoading(false);
   };
 
   useEffect(() => {
-    fetchData();
+    // 1. Carga inicial
+    refresh();
+
+    // 2. CONFIGURAR EL CANAL EN VIVO
+    const canal = supabase
+      .channel("cambios-en-el-palacio") // Nombre del canal
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "productos" },
+        () => {
+          console.log("¡Cambio detectado en productos!");
+          refresh(); // Cuando algo cambie, pedimos los datos nuevos
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "movimientos" },
+        () => {
+          refresh();
+        }
+      )
+      .subscribe();
+
+    // Limpieza al cerrar la app
+    return () => {
+      supabase.removeChannel(canal);
+    };
   }, []);
 
-  return { productos, movimientos, loading, refresh: fetchData };
+  return { productos, movimientos, loading, refresh };
 }
 
 // Función para buscar un producto por su código QR/Barras en la base de datos
