@@ -3,7 +3,7 @@ import { Html5Qrcode } from "html5-qrcode";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { Camera, X, Save } from "lucide-react";
+import { Camera, X, Save, RefreshCcw } from "lucide-react";
 import { agregarProducto, actualizarProducto } from "@/lib/inventory-store";
 import { toast } from "sonner";
 import type { Categoria, Producto } from "@/lib/types";
@@ -29,7 +29,6 @@ export function NuevoProductoModal({
   const [cargando, setCargando] = useState(false);
   const qrScannerRef = useRef<Html5Qrcode | null>(null);
 
-  // EFECTO: Si recibimos un producto para editar, llenamos los campos
   useEffect(() => {
     if (productoAEditar) {
       setNombre(productoAEditar.nombre);
@@ -38,7 +37,6 @@ export function NuevoProductoModal({
       setStock(productoAEditar.stock.toString());
       setCodigo(productoAEditar.codigo_qr);
     } else {
-      // Si no hay producto, limpiamos para que esté vacío para uno nuevo
       setNombre("");
       setCategoria("Otros");
       setPrecio("");
@@ -70,7 +68,10 @@ export function NuevoProductoModal({
     try {
       await html5QrCode.start(
         { facingMode: "environment" },
-        { fps: 10, qrbox: 200 },
+        { 
+          fps: 15, 
+          qrbox: (width, height) => ({ width: width * 0.7, height: height * 0.7 }) 
+        },
         (decodedText) => {
           setCodigo(decodedText);
           detenerCamaraGlobal();
@@ -80,6 +81,7 @@ export function NuevoProductoModal({
       );
     } catch (err) {
       setEscaneando(false);
+      toast.error("No se pudo acceder a la cámara");
     }
   };
 
@@ -98,10 +100,8 @@ export function NuevoProductoModal({
 
     let res;
     if (productoAEditar) {
-      // ACTUALIZAR
       res = await actualizarProducto(productoAEditar.id, datos);
     } else {
-      // AGREGAR NUEVO
       res = await agregarProducto(datos);
     }
 
@@ -113,39 +113,83 @@ export function NuevoProductoModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-      <Card className="w-full max-w-lg shadow-2xl">
-        <div className="flex items-center justify-between p-4 border-b">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+      <Card className="w-full max-w-lg shadow-2xl border-none">
+        <div className="flex items-center justify-between p-4 border-b bg-muted/30">
           <h2 className="text-xl font-display font-bold text-primary">
             {productoAEditar ? `Editar: ${productoAEditar.nombre}` : "Registrar Nuevo Licor"}
           </h2>
-          <Button variant="ghost" size="icon" onClick={onClose}><X className="size-5" /></Button>
+          <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full">
+            <X className="size-5" />
+          </Button>
         </div>
+        
         <CardContent className="p-6">
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-6">
             
-            {/* Lector oculto si estamos editando (opcional, podrías dejarlo por si quieres cambiar el QR) */}
-            <div className="relative bg-sidebar border-2 border-dashed border-sidebar-border rounded-lg overflow-hidden min-h-[120px] flex flex-col items-center justify-center">
-              <div id="lector-modal" className="w-full" />
+            {/* LECTOR QR GRANDE Y PROFESIONAL */}
+            <div className="relative bg-black rounded-xl overflow-hidden aspect-video shadow-inner flex items-center justify-center group">
+              <div id="lector-modal" className="w-full h-full" />
+              
               {!escaneando && (
-                <Button type="button" variant="outline" size="sm" onClick={iniciarEscaneo}>
-                   <Camera className="size-4 mr-2" /> {codigo ? "Cambiar Código" : "Escanear Código"}
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted/20 backdrop-blur-[2px]">
+                  <Button 
+                    type="button" 
+                    onClick={iniciarEscaneo}
+                    size="lg"
+                    className="rounded-full shadow-lg scale-110 hover:scale-115 transition-transform"
+                  >
+                    <Camera className="size-5 mr-2" />
+                    {codigo ? "Cambiar Código" : "Escanear QR / Barra"}
+                  </Button>
+                  {codigo && (
+                    <p className="mt-4 text-[10px] font-bold uppercase tracking-widest text-white drop-shadow-md">
+                      Código actual: {codigo}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {escaneando && (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="icon"
+                  className="absolute top-4 right-4 z-20 rounded-full size-10 shadow-lg"
+                  onClick={detenerCamaraGlobal}
+                >
+                  <X className="size-5" />
                 </Button>
               )}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div className="col-span-2 space-y-1">
-                <label className="text-[10px] font-bold uppercase">Nombre</label>
-                <Input value={nombre} onChange={e => setNombre(e.target.value)} />
+              <div className="col-span-2 space-y-2">
+                <label className="text-xs font-bold uppercase text-muted-foreground ml-1">Nombre del Producto</label>
+                <Input 
+                  placeholder="Ej. Whisky Johnnie Walker Blue Label"
+                  value={nombre} 
+                  onChange={e => setNombre(e.target.value)} 
+                />
               </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold uppercase">Código</label>
-                <Input className="font-mono" value={codigo} onChange={e => setCodigo(e.target.value)} />
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase text-muted-foreground ml-1">Código</label>
+                <Input 
+                  className="font-mono bg-muted/30" 
+                  value={codigo} 
+                  onChange={e => setCodigo(e.target.value)} 
+                  placeholder="Manual o QR"
+                />
               </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold uppercase">Categoría</label>
-                <select className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm" value={categoria} onChange={e => setCategoria(e.target.value as Categoria)}>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase text-muted-foreground ml-1">Categoría</label>
+                <select 
+                  className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm focus:ring-2 focus:ring-primary outline-none" 
+                  value={categoria} 
+                  onChange={e => setCategoria(e.target.value as Categoria)}
+                >
                   <option value="Whisky">Whisky</option>
                   <option value="Vino">Vino</option>
                   <option value="Cerveza">Cerveza</option>
@@ -154,20 +198,38 @@ export function NuevoProductoModal({
                   <option value="Otros">Otros</option>
                 </select>
               </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold uppercase">Precio (Bs.)</label>
-                <Input type="number" step="0.1" value={precio} onChange={e => setPrecio(e.target.value)} />
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase text-muted-foreground ml-1">Precio (Bs.)</label>
+                <Input 
+                  type="number" 
+                  step="0.1" 
+                  value={precio} 
+                  onChange={e => setPrecio(e.target.value)} 
+                />
               </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold uppercase">Stock Actual</label>
-                <Input type="number" value={stock} onChange={e => setStock(e.target.value)} />
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase text-muted-foreground ml-1">Stock Inicial</label>
+                <Input 
+                  type="number" 
+                  value={stock} 
+                  onChange={e => setStock(e.target.value)} 
+                />
               </div>
             </div>
 
-            <div className="flex gap-3 pt-4">
-              <Button type="button" variant="ghost" className="flex-1" onClick={onClose}>Cancelar</Button>
-              <Button type="submit" className="flex-1" disabled={cargando}>
-                <Save className="size-4 mr-2" /> {cargando ? "Guardando..." : (productoAEditar ? "Actualizar" : "Guardar")}
+            <div className="flex gap-3 pt-2">
+              <Button type="button" variant="ghost" className="flex-1" onClick={onClose}>
+                Cancelar
+              </Button>
+              <Button type="submit" className="flex-1 bg-primary text-primary-foreground font-bold" disabled={cargando}>
+                {cargando ? (
+                  <RefreshCcw className="size-4 mr-2 animate-spin" />
+                ) : (
+                  <Save className="size-4 mr-2" />
+                )}
+                {cargando ? "Guardando..." : (productoAEditar ? "Actualizar" : "Guardar Producto")}
               </Button>
             </div>
           </form>
