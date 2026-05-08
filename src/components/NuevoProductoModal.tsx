@@ -66,22 +66,36 @@ export function NuevoProductoModal({
     const html5QrCode = new Html5Qrcode("lector-modal");
     qrScannerRef.current = html5QrCode;
     try {
+      // CONFIGURACIÓN DE CÁMARA POTENCIADA
+      const configCamara = {
+        facingMode: "environment", // Usar cámara trasera
+        video: {
+          width: { ideal: 1920 },  // Solicitar Full HD 1080p
+          height: { ideal: 1080 },
+          frameRate: { ideal: 30 } // 30 cuadros por segundo para fluidez
+        }
+      };
+
+      // CONFIGURACIÓN DEL ESCÁNER LIBRE (SIN MARCO)
+      const configEscaner = { 
+        fps: 20, // Aumentamos la frecuencia de análisis por segundo
+        // REMOVIDO qrbox AQUÍ -> Escanea toda la pantalla
+      };
+
       await html5QrCode.start(
-        { facingMode: "environment" },
-        { 
-          fps: 15, 
-          qrbox: (width, height) => ({ width: width * 0.7, height: height * 0.7 }) 
-        },
+        configCamara, // Pasamos la nueva configuración de calidad
+        configEscaner, // Pasamos la configuración libre
         (decodedText) => {
           setCodigo(decodedText);
           detenerCamaraGlobal();
           toast.success("Código capturado");
         },
-        () => {}
+        () => {} // Ignorar errores de escaneo fallido por frame
       );
     } catch (err) {
+      console.error("Error al iniciar cámara:", err);
       setEscaneando(false);
-      toast.error("No se pudo acceder a la cámara");
+      toast.error("No se pudo acceder a la cámara o no soporta HD");
     }
   };
 
@@ -113,9 +127,9 @@ export function NuevoProductoModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-      <Card className="w-full max-w-lg shadow-2xl border-none">
-        <div className="flex items-center justify-between p-4 border-b bg-muted/30">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+      <Card className="w-full max-w-lg shadow-2xl border-none overflow-hidden">
+        <div className="flex items-center justify-between p-4 border-b bg-muted/40">
           <h2 className="text-xl font-display font-bold text-primary">
             {productoAEditar ? `Editar: ${productoAEditar.nombre}` : "Registrar Nuevo Licor"}
           </h2>
@@ -124,113 +138,127 @@ export function NuevoProductoModal({
           </Button>
         </div>
         
-        <CardContent className="p-6">
-          <form onSubmit={handleSubmit} className="space-y-6">
+        <CardContent className="p-0"> {/* Eliminamos padding para que la cámara llegue al borde */}
+          <form onSubmit={handleSubmit} className="space-y-0">
             
-            {/* LECTOR QR GRANDE Y PROFESIONAL */}
-            <div className="relative bg-black rounded-xl overflow-hidden aspect-video shadow-inner flex items-center justify-center group">
-              <div id="lector-modal" className="w-full h-full" />
+            {/* LECTOR QR HD, LIBRE Y COMPLETO */}
+            <div className="relative bg-black aspect-[4/3] shadow-inner flex items-center justify-center group overflow-hidden">
+              {/* Contenedor del video - Ahora sin marcos visuales */}
+              <div id="lector-modal" className="w-full h-full object-cover" />
               
               {!escaneando && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted/20 backdrop-blur-[2px]">
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 backdrop-blur-[2px] z-10 p-6">
+                  <div className="size-20 rounded-full bg-primary/10 flex items-center justify-center border-4 border-dashed border-primary/30 mb-6 animate-pulse">
+                      <Camera className="size-10 text-primary" />
+                  </div>
                   <Button 
                     type="button" 
                     onClick={iniciarEscaneo}
                     size="lg"
-                    className="rounded-full shadow-lg scale-110 hover:scale-115 transition-transform"
+                    className="rounded-full shadow-2xl scale-110 hover:scale-115 transition-transform bg-primary font-bold px-8"
                   >
-                    <Camera className="size-5 mr-2" />
-                    {codigo ? "Cambiar Código" : "Escanear QR / Barra"}
+                    {codigo ? "Cambiar Código" : "Escanear Producto"}
                   </Button>
                   {codigo && (
-                    <p className="mt-4 text-[10px] font-bold uppercase tracking-widest text-white drop-shadow-md">
-                      Código actual: {codigo}
-                    </p>
+                    <div className="mt-6 bg-background/80 px-4 py-2 rounded-full border border-border/50 shadow-md">
+                        <p className="text-sm font-mono text-center text-foreground">
+                        Actual: {codigo}
+                        </p>
+                    </div>
                   )}
                 </div>
               )}
 
               {escaneando && (
-                <Button
-                  type="button"
-                  variant="destructive"
-                  size="icon"
-                  className="absolute top-4 right-4 z-20 rounded-full size-10 shadow-lg"
-                  onClick={detenerCamaraGlobal}
-                >
-                  <X className="size-5" />
-                </Button>
+                <>
+                    {/* Botón de cierre elegante sobre la cámara */}
+                    <Button
+                    type="button"
+                    variant="secondary"
+                    size="icon"
+                    className="absolute top-4 right-4 z-20 rounded-full size-10 shadow-xl opacity-80 hover:opacity-100"
+                    onClick={detenerCamaraGlobal}
+                    >
+                    <X className="size-5" />
+                    </Button>
+                    
+                    {/* Indicador visual minimalista de escaneo libre (opcional, una línea central) */}
+                    <div className="absolute left-0 right-0 top-1/2 h-0.5 bg-primary/40 shadow-[0_0_15px_3px_rgba(var(--primary-rgb),0.3)] animate-scan-line z-10"/>
+                </>
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="col-span-2 space-y-2">
-                <label className="text-xs font-bold uppercase text-muted-foreground ml-1">Nombre del Producto</label>
-                <Input 
-                  placeholder="Ej. Whisky Johnnie Walker Blue Label"
-                  value={nombre} 
-                  onChange={e => setNombre(e.target.value)} 
-                />
-              </div>
+            {/* Formulario con espaciado ajustado */}
+            <div className="p-6 space-y-6">
+                <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2 space-y-2">
+                    <label className="text-xs font-bold uppercase text-muted-foreground ml-1">Nombre del Producto</label>
+                    <Input 
+                    placeholder="Ej. Whisky Johnnie Walker Blue Label"
+                    value={nombre} 
+                    onChange={e => setNombre(e.target.value)} 
+                    />
+                </div>
 
-              <div className="space-y-2">
-                <label className="text-xs font-bold uppercase text-muted-foreground ml-1">Código</label>
-                <Input 
-                  className="font-mono bg-muted/30" 
-                  value={codigo} 
-                  onChange={e => setCodigo(e.target.value)} 
-                  placeholder="Manual o QR"
-                />
-              </div>
+                <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase text-muted-foreground ml-1">Código</label>
+                    <Input 
+                    className="font-mono bg-muted/40" 
+                    value={codigo} 
+                    onChange={e => setCodigo(e.target.value)} 
+                    placeholder="Manual o QR"
+                    />
+                </div>
 
-              <div className="space-y-2">
-                <label className="text-xs font-bold uppercase text-muted-foreground ml-1">Categoría</label>
-                <select 
-                  className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm focus:ring-2 focus:ring-primary outline-none" 
-                  value={categoria} 
-                  onChange={e => setCategoria(e.target.value as Categoria)}
-                >
-                  <option value="Whisky">Whisky</option>
-                  <option value="Vino">Vino</option>
-                  <option value="Cerveza">Cerveza</option>
-                  <option value="Singani">Singani</option>
-                  <option value="Ron">Ron</option>
-                  <option value="Otros">Otros</option>
-                </select>
-              </div>
+                <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase text-muted-foreground ml-1">Categoría</label>
+                    <select 
+                    className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm focus:ring-2 focus:ring-primary outline-none" 
+                    value={categoria} 
+                    onChange={e => setCategoria(e.target.value as Categoria)}
+                    >
+                    <option value="Whisky">Whisky</option>
+                    <option value="Vino">Vino</option>
+                    <option value="Cerveza">Cerveza</option>
+                    <option value="Singani">Singani</option>
+                    <option value="Ron">Ron</option>
+                    <option value="Otros">Otros</option>
+                    </select>
+                </div>
 
-              <div className="space-y-2">
-                <label className="text-xs font-bold uppercase text-muted-foreground ml-1">Precio (Bs.)</label>
-                <Input 
-                  type="number" 
-                  step="0.1" 
-                  value={precio} 
-                  onChange={e => setPrecio(e.target.value)} 
-                />
-              </div>
+                <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase text-muted-foreground ml-1">Precio (Bs.)</label>
+                    <Input 
+                    type="number" 
+                    step="0.1" 
+                    value={precio} 
+                    onChange={e => setPrecio(e.target.value)} 
+                    />
+                </div>
 
-              <div className="space-y-2">
-                <label className="text-xs font-bold uppercase text-muted-foreground ml-1">Stock Inicial</label>
-                <Input 
-                  type="number" 
-                  value={stock} 
-                  onChange={e => setStock(e.target.value)} 
-                />
-              </div>
-            </div>
+                <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase text-muted-foreground ml-1">Stock Inicial</label>
+                    <Input 
+                    type="number" 
+                    value={stock} 
+                    onChange={e => setStock(e.target.value)} 
+                    />
+                </div>
+                </div>
 
-            <div className="flex gap-3 pt-2">
-              <Button type="button" variant="ghost" className="flex-1" onClick={onClose}>
-                Cancelar
-              </Button>
-              <Button type="submit" className="flex-1 bg-primary text-primary-foreground font-bold" disabled={cargando}>
-                {cargando ? (
-                  <RefreshCcw className="size-4 mr-2 animate-spin" />
-                ) : (
-                  <Save className="size-4 mr-2" />
-                )}
-                {cargando ? "Guardando..." : (productoAEditar ? "Actualizar" : "Guardar Producto")}
-              </Button>
+                <div className="flex gap-3 pt-2">
+                <Button type="button" variant="ghost" className="flex-1" onClick={onClose}>
+                    Cancelar
+                </Button>
+                <Button type="submit" className="flex-1 bg-primary text-primary-foreground font-bold text-lg" disabled={cargando}>
+                    {cargando ? (
+                    <RefreshCcw className="size-5 mr-2 animate-spin" />
+                    ) : (
+                    <Save className="size-5 mr-2" />
+                    )}
+                    {cargando ? "Guardando..." : (productoAEditar ? "Actualizar" : "Guardar Producto")}
+                </Button>
+                </div>
             </div>
           </form>
         </CardContent>
