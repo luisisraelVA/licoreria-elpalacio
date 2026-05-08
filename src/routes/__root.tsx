@@ -81,12 +81,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
     ],
-    links: [
-      {
-        rel: "stylesheet",
-        href: appCss,
-      },
-    ],
+   links: [
+  {
+    rel: "icon",
+    href: "/favicon.ico", // Vite buscará esto automáticamente dentro de la carpeta /public
+  },
+  {
+    rel: "stylesheet",
+    href: appCss,
+  },
+],
   }),
   shellComponent: RootShell,
   component: RootComponent,
