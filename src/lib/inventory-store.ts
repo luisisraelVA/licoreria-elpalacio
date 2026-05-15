@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Producto } from "./types";
 import { toast } from "sonner";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
+const API_URL = "https://el-palacio-api.onrender.com/api";
 // Ayudante para manejar errores del servidor de forma centralizada
 async function handleResponse(res: Response) {
   const data = await res.json();
