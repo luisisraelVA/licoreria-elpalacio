@@ -1,159 +1,106 @@
 import { useState, useEffect } from "react";
-import { supabase } from "./supabase";
-import type { Movimiento, Producto, TipoMovimiento } from "./types";
+import { Producto } from "./types";
 import { toast } from "sonner";
 
-// Hook para obtener el inventario y movimientos en tiempo real
-export function useInventory() {
-  const [productos, setProductos] = useState<Producto[]>([]);
-  const [movimientos, setMovimientos] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  // Función para cargar datos (la que ya tenías)
-  const refresh = async () => {
-    setLoading(true);
-    const { data: p } = await supabase.from("productos").select("*").order("nombre");
-    const { data: m } = await supabase.from("movimientos").select("*").order("fecha_hora", { ascending: false });
-    if (p) setProductos(p);
-    if (m) setMovimientos(m);
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    // 1. Carga inicial
-    refresh();
-
-    // 2. CONFIGURAR EL CANAL EN VIVO
-    const canal = supabase
-      .channel("cambios-en-el-palacio") // Nombre del canal
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "productos" },
-        () => {
-          console.log("¡Cambio detectado en productos!");
-          refresh(); // Cuando algo cambie, pedimos los datos nuevos
-        }
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "movimientos" },
-        () => {
-          refresh();
-        }
-      )
-      .subscribe();
-
-    // Limpieza al cerrar la app
-    return () => {
-      supabase.removeChannel(canal);
-    };
-  }, []);
-
-  return { productos, movimientos, loading, refresh };
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
+// Ayudante para manejar errores del servidor de forma centralizada
+async function handleResponse(res: Response) {
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || data.message || "Error en la operación");
+  }
+  return data;
 }
 
-// Función para buscar un producto por su código QR/Barras en la base de datos
+export async function getProductos(): Promise<Producto[]> {
+  try {
+    const res = await fetch(`${API_URL}/productos`);
+    return await handleResponse(res);
+  } catch (error: any) {
+    console.error(error.message);
+    return [];
+  }
+}
+
 export async function buscarPorCodigo(codigo: string): Promise<Producto | null> {
   try {
-    const { data, error } = await supabase
-      .from("productos")
-      .select("*")
-      .eq("codigo_qr", codigo)
-      .maybeSingle(); // Retorna un solo objeto o null si no existe
-
-    if (error) throw error;
-    return data;
-  } catch (error: any) {
-    console.error("Error buscando código:", error.message);
+    const res = await fetch(`${API_URL}/productos/buscar?codigo=${encodeURIComponent(codigo)}`);
+    if (res.status === 404) return null;
+    return await handleResponse(res);
+  } catch (error) {
     return null;
   }
 }
 
-// Función para registrar entradas o salidas y actualizar el stock
-export async function registrarMovimiento(
-  productoId: string,
-  tipo: TipoMovimiento,
-  cantidad: number,
-  stockActual: number
-) {
+export async function agregarProducto(datos: any) {
   try {
-    // 1. Calcular nuevo stock
-    const nuevoStock = tipo === "entrada" 
-      ? stockActual + cantidad 
-      : Math.max(0, stockActual - cantidad);
-
-    // 2. Insertar el registro del movimiento
-    const { error: movError } = await supabase
-      .from("movimientos")
-      .insert([
-        {
-          producto_id: productoId,
-          tipo_movimiento: tipo,
-          cantidad: cantidad,
-        },
-      ]);
-
-    if (movError) throw movError;
-
-    // 3. Actualizar el stock en la tabla de productos
-    const { error: prodError } = await supabase
-      .from("productos")
-      .update({ stock: nuevoStock })
-      .eq("id", productoId);
-
-    if (prodError) throw prodError;
-
-    return { success: true };
+    const res = await fetch(`${API_URL}/productos`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(datos)
+    });
+    const result = await handleResponse(res);
+    toast.success("Producto registrado exitosamente");
+    return result;
   } catch (error: any) {
-    toast.error("No se pudo registrar el movimiento");
-    console.error(error);
-    return { success: false, error: error.message };
-  }
-}
-
-export async function agregarProducto(nuevoProducto: Omit<Producto, 'id'>) {
-  try {
-    const { data, error } = await supabase
-      .from("productos")
-      .insert([nuevoProducto])
-      .select()
-      .single();
-
-    if (error) throw error;
-    return { success: true, data };
-  } catch (error: any) {
-    console.error("Error al crear producto:", error.message);
-    toast.error("Error al crear producto", { description: error.message });
-    return { success: false, error: error.message };
-  }
-}
-
-// Función para eliminar un producto
-export async function eliminarProducto(id: string) {
-  try {
-    const { error } = await supabase.from("productos").delete().eq("id", id);
-    if (error) throw error;
-    toast.success("Producto eliminado del sistema");
-    return { success: true };
-  } catch (error: any) {
-    toast.error("No se pudo eliminar");
+    toast.error(error.message);
     return { success: false };
   }
 }
 
-// Función para actualizar datos de un producto existente
-export async function actualizarProducto(id: string, cambios: Partial<Producto>) {
+export async function actualizarProducto(id: number, datos: any) {
   try {
-    const { error } = await supabase
-      .from("productos")
-      .update(cambios)
-      .eq("id", id);
-      
-    if (error) throw error;
-    toast.success("Producto actualizado correctamente");
-    return { success: true };
+    const res = await fetch(`${API_URL}/productos/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(datos)
+    });
+    const result = await handleResponse(res);
+    toast.success("Datos actualizados");
+    return result;
   } catch (error: any) {
-    toast.error("Error al actualizar");
+    toast.error(error.message);
     return { success: false };
   }
+}
+
+export async function eliminarProducto(id: number) {
+  try {
+    const res = await fetch(`${API_URL}/productos/${id}`, { method: 'DELETE' });
+    const result = await handleResponse(res);
+    toast.success("Producto eliminado");
+    return result;
+  } catch (error: any) {
+    toast.error(error.message);
+    return { success: false };
+  }
+}
+
+export async function registrarMovimiento(datos: { producto_id: number, tipo: 'entrada' | 'salida', cantidad: number }) {
+  try {
+    const res = await fetch(`${API_URL}/movimientos`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(datos)
+    });
+    return await handleResponse(res);
+  } catch (error: any) {
+    toast.error(error.message);
+    return { success: false };
+  }
+}
+
+export function useInventory() {
+  const [productos, setProductos] = useState<Producto[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const refresh = async () => {
+    setLoading(true);
+    const data = await getProductos();
+    setProductos(data);
+    setLoading(false);
+  };
+
+  useEffect(() => { refresh(); }, []);
+  return { productos, loading, refresh };
 }

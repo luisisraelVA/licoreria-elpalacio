@@ -1,7 +1,7 @@
 export type Categoria = "Whisky" | "Vino" | "Cerveza" | "Singani" | "Ron" | "Vodka" | "Tequila" | "Otros";
 
 export interface Producto {
-  id: string;
+  id: number;
   nombre: string;
   categoria: Categoria;
   codigo_qr: string;
@@ -9,12 +9,10 @@ export interface Producto {
   precio: number;
 }
 
-export type TipoMovimiento = "entrada" | "salida";
-
 export interface Movimiento {
-  id: string;
-  producto_id: string;
-  tipo_movimiento: TipoMovimiento;
+  id: number;
+  producto_id: number;
+  tipo: "entrada" | "salida";
   cantidad: number;
-  fecha_hora: string; // ISO
+  fecha_hora: string;
 }

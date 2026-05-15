@@ -113,7 +113,7 @@ export function NuevoProductoModal({
 
     let res;
     if (productoAEditar) {
-      res = await actualizarProducto(productoAEditar.id, datos);
+      res = await actualizarProducto(Number(productoAEditar.id), datos);
     } else {
       res = await agregarProducto(datos);
     }

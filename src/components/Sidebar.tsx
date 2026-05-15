@@ -1,103 +1,102 @@
-import { Link, useLocation, useNavigate } from "@tanstack/react-router";
-import { LayoutDashboard, ScanLine, Wine, LogOut } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { LayoutDashboard, QrCode, History, Wine, Menu, X, LogOut } from "lucide-react";
+import { useState } from "react";
 
-const links = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/escaner", label: "Terminal de Escaneo", icon: ScanLine },
-] as const;
+const navItems = [
+  { to: "/", icon: LayoutDashboard, label: "Dashboard" },
+  { to: "/escaner", icon: QrCode, label: "Terminal de Escaneo" },
+  { to: "/historial", icon: History, label: "Historial" }
+];
 
 export function Sidebar() {
-  const { pathname } = useLocation();
   const navigate = useNavigate();
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate({ to: "/login", replace: true });
+  const handleCerrarSesion = () => {
+    localStorage.removeItem("palacio_sesion"); // Borramos la llave
+    navigate({ to: "/login", replace: true }); // Lo mandamos al login
   };
 
   return (
-    <aside className="hidden md:flex md:w-64 md:flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border">
-      <div className="px-6 py-6 border-b border-sidebar-border">
-        <div className="flex items-center gap-3">
-          <div className="size-10 rounded-lg bg-sidebar-primary text-sidebar-primary-foreground flex items-center justify-center">
-            <Wine className="size-5" />
+    <div className="w-64 min-h-screen bg-[#241312] text-white hidden md:flex flex-col justify-between">
+      {/* SECCIÓN ARRIBA: Logo y Menú */}
+      <div>
+        <div className="p-6 flex items-center gap-3">
+          <div className="bg-[#D9A05B] p-2 rounded-lg shadow-lg">
+            <Wine className="size-6 text-[#241312]" />
           </div>
           <div>
-            <p className="font-display text-lg leading-tight">El Palacio</p>
-            <p className="text-xs text-sidebar-foreground/60">Licorería · Inventario</p>
+            <h2 className="font-display font-bold text-xl text-white tracking-tight">El Palacio</h2>
+            <p className="text-xs text-white/60">Licorería · Inventario</p>
           </div>
         </div>
-      </div>
-      <nav className="flex-1 px-3 py-4 space-y-1">
-        {links.map(({ to, label, icon: Icon }) => {
-          const active = pathname === to;
-          return (
-            <Link
-              key={to}
-              to={to}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-colors ${
-                active
-                  ? "bg-sidebar-accent text-sidebar-primary font-medium"
-                  : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-              }`}
+
+        <nav className="px-4 py-6 space-y-2">
+          {navItems.map((item) => (
+            <Link 
+              key={item.to}
+              to={item.to} 
+              className="flex items-center gap-3 px-4 py-3 rounded-xl text-white/70 hover:bg-white/5 hover:text-white transition-all [&.active]:bg-white/10 [&.active]:text-[#D9A05B] font-medium"
             >
-              <Icon className="size-4" />
-              {label}
+              <item.icon className="size-5" />
+              {item.label}
             </Link>
-          );
-        })}
-      </nav>
-      
-      {/* Botón de Cerrar Sesión (Escritorio) */}
-      <div className="p-3 border-t border-sidebar-border">
-        <button
-          onClick={handleLogout}
-          className="flex w-full items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+          ))}
+        </nav>
+      </div>
+
+      {/* SECCIÓN ABAJO: Botón de Cerrar Sesión */}
+      <div className="p-4 border-t border-white/10">
+        <button 
+          onClick={handleCerrarSesion}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-all font-bold"
         >
-          <LogOut className="size-4" />
+          <LogOut className="size-5" />
           Cerrar Sesión
         </button>
       </div>
-    </aside>
+    </div>
   );
 }
 
+// 2. EL MENÚ PARA CELULARES (Mobile) - ¡El que faltaba!
 export function MobileNav() {
-  const { pathname } = useLocation();
-  const navigate = useNavigate();
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate({ to: "/login", replace: true });
-  };
+  const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-sidebar text-sidebar-foreground border-t border-sidebar-border grid grid-cols-3">
-      {links.map(({ to, label, icon: Icon }) => {
-        const active = pathname === to;
-        return (
-          <Link
-            key={to}
-            to={to}
-            className={`flex flex-col items-center gap-1 py-3 text-xs ${
-              active ? "text-sidebar-primary" : "text-sidebar-foreground/70"
-            }`}
-          >
-            <Icon className="size-5" />
-            <span className="truncate w-full text-center px-1">{label}</span>
-          </Link>
-        );
-      })}
-      
-      {/* Botón de Cerrar Sesión (Móvil) */}
-      <button
-        onClick={handleLogout}
-        className="flex flex-col items-center justify-center gap-1 py-3 text-xs text-sidebar-foreground/70 hover:text-destructive"
-      >
-        <LogOut className="size-5" />
-        Salir
-      </button>
-    </nav>
+    <div className="md:hidden flex flex-col w-full relative z-50">
+      {/* Barra superior en celular */}
+      <div className="flex items-center justify-between bg-[#241312] p-4 text-white shadow-md">
+        <div className="flex items-center gap-3">
+          <div className="bg-[#D9A05B] p-1.5 rounded-md">
+            <Wine className="size-5 text-[#241312]" />
+          </div>
+          <span className="font-display font-bold text-lg">El Palacio</span>
+        </div>
+        
+        <button 
+          onClick={() => setIsOpen(!isOpen)} 
+          className="p-1 rounded-md hover:bg-white/10 transition-colors"
+        >
+          {isOpen ? <X className="size-6" /> : <Menu className="size-6" />}
+        </button>
+      </div>
+
+      {/* Menú desplegable */}
+      {isOpen && (
+        <nav className="absolute top-full left-0 right-0 bg-[#241312] border-t border-white/10 p-4 flex flex-col gap-2 shadow-2xl animate-in slide-in-from-top-2">
+          {navItems.map((item) => (
+            <Link 
+              key={item.to}
+              to={item.to} 
+              onClick={() => setIsOpen(false)} // Cierra el menú al hacer clic
+              className="flex items-center gap-3 px-4 py-4 rounded-xl text-white/80 hover:bg-white/5 transition-colors [&.active]:bg-white/10 [&.active]:text-[#D9A05B]"
+            >
+              <item.icon className="size-5" />
+              {item.label}
+            </Link>
+          ))}
+        </nav>
+      )}
+    </div>
   );
 }

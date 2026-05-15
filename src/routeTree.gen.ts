@@ -10,12 +10,18 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as HistorialRouteImport } from './routes/historial'
 import { Route as EscanerRouteImport } from './routes/escaner'
 import { Route as IndexRouteImport } from './routes/index'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HistorialRoute = HistorialRouteImport.update({
+  id: '/historial',
+  path: '/historial',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EscanerRoute = EscanerRouteImport.update({
@@ -32,30 +38,34 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/escaner': typeof EscanerRoute
+  '/historial': typeof HistorialRoute
   '/login': typeof LoginRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/escaner': typeof EscanerRoute
+  '/historial': typeof HistorialRoute
   '/login': typeof LoginRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/escaner': typeof EscanerRoute
+  '/historial': typeof HistorialRoute
   '/login': typeof LoginRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/escaner' | '/login'
+  fullPaths: '/' | '/escaner' | '/historial' | '/login'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/escaner' | '/login'
-  id: '__root__' | '/' | '/escaner' | '/login'
+  to: '/' | '/escaner' | '/historial' | '/login'
+  id: '__root__' | '/' | '/escaner' | '/historial' | '/login'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   EscanerRoute: typeof EscanerRoute
+  HistorialRoute: typeof HistorialRoute
   LoginRoute: typeof LoginRoute
 }
 
@@ -66,6 +76,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/historial': {
+      id: '/historial'
+      path: '/historial'
+      fullPath: '/historial'
+      preLoaderRoute: typeof HistorialRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/escaner': {
@@ -88,6 +105,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   EscanerRoute: EscanerRoute,
+  HistorialRoute: HistorialRoute,
   LoginRoute: LoginRoute,
 }
 export const routeTree = rootRouteImport
