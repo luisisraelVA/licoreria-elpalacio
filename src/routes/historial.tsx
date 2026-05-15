@@ -13,7 +13,8 @@ function HistorialPage() {
   const [movimientos, setMovimientos] = useState([]);
 
   useEffect(() => {
-    fetch("http://localhost:3001/api/historial")
+   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
+fetch(`${API_URL}/historial`)
       .then(res => res.json())
       .then(data => setMovimientos(data))
       .catch(err => console.error("Error cargando historial", err));
